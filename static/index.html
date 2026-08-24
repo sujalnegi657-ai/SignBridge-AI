@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SignBridge AI</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <!-- MediaPipe Tasks Vision via CDN (for hand landmark detection in browser) -->
+  <script type="importmap">
+  {
+    "imports": {
+      "@mediapipe/tasks-vision": "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs"
+    }
+  }
+  </script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="logo-area">
+        <span class="logo-icon">&#9995;</span>
+        <div>
+          <h1>SignBridge AI</h1>
+          <p class="subtitle">Real-Time Two-Way Sign Language Communication</p>
+        </div>
+      </div>
+      <div class="header-status">
+        <span id="modelStatus" class="badge badge-warning">Model: Checking...</span>
+        <span id="wsStatus" class="badge badge-error">WS: Disconnected</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-grid">
+    <!-- ══════════════ LEFT PANEL: SIGN → TEXT + SPEECH ══════════════ -->
+    <section class="panel panel-left" aria-label="Sign to Text and Speech">
+      <div class="panel-header">
+        <span class="panel-icon">&#128250;</span>
+        <div>
+          <h2>SIGN &rarr; TEXT + SPEECH</h2>
+          <p class="panel-desc">Show a sign to the camera</p>
+        </div>
+      </div>
+
+      <div class="camera-container">
+        <video id="webcam" autoplay playsinline muted aria-label="Webcam feed"></video>
+        <canvas id="overlayCanvas" aria-hidden="true"></canvas>
+        <div id="cameraOverlay" class="camera-overlay">
+          <span>&#128250;</span>
+          <p>Camera not started</p>
+          <p class="hint">Click "Start Camera" below</p>
+        </div>
+      </div>
+
+      <div class="camera-controls">
+        <button id="startCam" class="btn btn-primary" aria-label="Start Camera">
+          &#9654; Start Camera
+        </button>
+        <button id="stopCam" class="btn btn-secondary" disabled aria-label="Stop Camera">
+          &#9724; Stop Camera
+        </button>
+      </div>
+
+      <div class="detection-panel">
+        <div class="status-row">
+          <span class="label">Detection</span>
+          <span id="detectionStatus" class="badge badge-idle">Idle</span>
+        </div>
+
+        <div class="result-card" id="signResultCard">
+          <div class="result-label">Detected Sign</div>
+          <div id="detectedSign" class="result-value">—</div>
+          <div class="confidence-bar-wrap">
+            <div id="confidenceBar" class="confidence-bar" style="width:0%"></div>
+          </div>
+          <div id="confidenceText" class="confidence-text">Confidence: —</div>
+        </div>
+
+        <div class="output-row">
+          <div class="output-box">
+            <span class="output-label">&#128172; Text Output</span>
+            <div id="textOutput" class="output-value">Waiting for sign...</div>
+          </div>
+        </div>
+
+        <div class="speak-row">
+          <span id="speakStatus" class="speak-status"></span>
+        </div>
+
+        <div class="gesture-list" aria-label="12 supported gestures">
+          <span class="label">12 Supported Gestures</span>
+          <div class="gesture-tags">
+            <span>Hello</span><span>Yes</span><span>No</span><span>Help</span>
+            <span>Thank You</span><span>Please</span><span>Sorry</span><span>Welcome</span>
+            <span>Stop</span><span>Good</span><span>Bad</span><span>Wait</span>
+          </div>
+        </div>
+
+        <button id="clearBtn" class="btn btn-ghost" aria-label="Clear output">
+          &#10060; Clear Output
+        </button>
+      </div>
+    </section>
+
+    <!-- ══════════════ RIGHT PANEL: SPEECH/TEXT → SIGN ══════════════ -->
+    <section class="panel panel-right" aria-label="Speech and Text to Sign">
+      <div class="panel-header">
+        <span class="panel-icon">&#128483;</span>
+        <div>
+          <h2>SPEECH / TEXT &rarr; SIGN</h2>
+          <p class="panel-desc">Speak or type to see the sign</p>
+        </div>
+      </div>
+
+      <!-- Microphone -->
+      <div class="mic-section">
+        <button id="micBtn" class="mic-btn" aria-label="Start voice recognition" title="Click to speak">
+          <span class="mic-icon">&#127908;</span>
+        </button>
+        <div id="micStatus" class="mic-status">Click microphone to speak</div>
+        <div id="transcript" class="transcript-box" aria-live="polite"></div>
+      </div>
+
+      <!-- Text input -->
+      <div class="text-input-section">
+        <div class="input-row">
+          <input
+            type="text"
+            id="textInput"
+            class="sign-input"
+            placeholder="Type: Hello, Yes, No, Help, Thank You, Please, Sorry, Welcome, Stop, Good, Bad, Wait..."
+            aria-label="Type a word to translate to sign"
+          />
+          <button id="translateBtn" class="btn btn-primary" aria-label="Translate text to sign">
+            Translate
+          </button>
+        </div>
+      </div>
+
+      <!-- Recognized keyword -->
+      <div class="keyword-display">
+        <span class="label">Recognized Keyword</span>
+        <span id="recognizedKeyword" class="keyword-badge">—</span>
+      </div>
+
+      <!-- Sign visual area -->
+      <div class="sign-visual-area" id="signVisualArea" aria-live="polite">
+        <div class="visual-placeholder" id="visualPlaceholder">
+          <span class="placeholder-icon">&#129312;</span>
+          <p>Sign visual will appear here</p>
+          <p class="hint">Supported: Hello &bull; Yes &bull; No &bull; Help &bull; Thank You &bull; Please &bull; Sorry &bull; Welcome &bull; Stop &bull; Good &bull; Bad &bull; Wait</p>
+        </div>
+      </div>
+
+      <!-- Vocabulary chips -->
+      <div class="vocab-chips" aria-label="Supported vocabulary">
+        <span class="vocab-label">Quick:</span>
+        <button class="chip" data-word="Hello" aria-label="Show Hello sign">Hello</button>
+        <button class="chip" data-word="Yes" aria-label="Show Yes sign">Yes</button>
+        <button class="chip" data-word="No" aria-label="Show No sign">No</button>
+        <button class="chip" data-word="Help" aria-label="Show Help sign">Help</button>
+        <button class="chip" data-word="Thank You" aria-label="Show Thank You sign">Thank You</button>
+        <button class="chip" data-word="Please" aria-label="Show Please sign">Please</button>
+        <button class="chip" data-word="Sorry" aria-label="Show Sorry sign">Sorry</button>
+        <button class="chip" data-word="Welcome" aria-label="Show Welcome sign">Welcome</button>
+        <button class="chip" data-word="Stop" aria-label="Show Stop sign">Stop</button>
+        <button class="chip" data-word="Good" aria-label="Show Good sign">Good</button>
+        <button class="chip" data-word="Bad" aria-label="Show Bad sign">Bad</button>
+        <button class="chip" data-word="Wait" aria-label="Show Wait sign">Wait</button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>
+      SignBridge AI &bull; Smart India Hackathon MVP &bull;
+      <strong>Prototype Vocabulary Only</strong> &mdash;
+      This system does not translate complete Indian Sign Language.
+    </p>
+  </footer>
+
+  <script type="module" src="/static/app.js"></script>
+</body>
+</html>

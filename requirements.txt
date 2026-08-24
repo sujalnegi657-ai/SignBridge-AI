@@ -1,0 +1,25 @@
+# SignBridge AI - dependencies
+#
+# IMPORTANT (Windows): mediapipe currently only ships wheels for
+# Python 3.9 - 3.12. If your default `python` is 3.13/3.14, pip install
+# will fail on the mediapipe line below. Check your version first:
+#   python --version
+# If it's 3.13+, install Python 3.12 from python.org (you can keep both
+# versions - Windows lets you pick via the "py" launcher), then use:
+#   py -3.12 -m venv venv
+#   venv\Scripts\activate
+#   pip install -r requirements.txt
+#
+# Only collect_data.py needs mediapipe (offline data collection).
+# main.py (the FastAPI server) does NOT import mediapipe - hand detection
+# for the live demo runs in the browser via MediaPipe's JS/WASM build.
+
+fastapi>=0.100.0
+uvicorn>=0.20.0
+websockets>=11.0
+opencv-python-headless>=4.8.0
+numpy>=1.24.0
+pandas>=2.0.0
+scikit-learn>=1.3.0
+joblib>=1.3.0
+python-multipart>=0.0.6
