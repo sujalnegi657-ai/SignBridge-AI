@@ -130,9 +130,8 @@ function connectWebSocket() {
 
     ws.onclose = () => {
       wsReady = false;
-      setBadge(wsStatusEl, "WS: Disconnected", "error");
-      console.log("[WS] Disconnected, retrying in 3s...");
-      setTimeout(connectWebSocket, 3000);
+      setBadge(wsStatusEl, "HTTP: Active", "success");
+      console.log("[WS] Disconnected. Using HTTP /predict fallback.");
     };
 
     ws.onerror = (e) => {
@@ -154,6 +153,32 @@ function connectWebSocket() {
     };
   } catch (err) {
     console.error("[WS] Cannot connect:", err);
+  }
+}
+
+// ── HTTP Predict Fallback (Vercel / Serverless) ───────────────────────
+let isHttpPredicting = false;
+let lastHttpPredictTime = 0;
+
+async function sendHttpPrediction(flatLandmarks) {
+  const now = Date.now();
+  if (isHttpPredicting || now - lastHttpPredictTime < 150) return;
+  isHttpPredicting = true;
+  lastHttpPredictTime = now;
+  try {
+    const res = await fetch("/predict", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ landmarks: flatLandmarks }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      handlePrediction(data);
+    }
+  } catch (err) {
+    console.warn("[HTTP Predict] Error:", err);
+  } finally {
+    isHttpPredicting = false;
   }
 }
 
@@ -275,9 +300,11 @@ function startDetectionLoop() {
         setStatus(detectionStatus, "Hand Detected", "active");
 
         // Send to backend for prediction
+        const flat = normalizeLandmarks(handLandmarks);
         if (wsReady && ws && ws.readyState === WebSocket.OPEN) {
-          const flat = normalizeLandmarks(handLandmarks);
           ws.send(JSON.stringify({ landmarks: flat }));
+        } else {
+          sendHttpPrediction(flat);
         }
       } else {
         setStatus(detectionStatus, "No Hand", "idle");

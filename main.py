@@ -9,10 +9,11 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
 # ── Paths ──────────────────────────────────────────────────────────
-MODEL_PATH = "model/sign_model.pkl"
-ENCODER_PATH = "model/label_encoder.pkl"
-STATIC_DIR = "static"
-ASSETS_DIR = "assets"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_PATH = os.path.join(BASE_DIR, "model", "sign_model.pkl")
+ENCODER_PATH = os.path.join(BASE_DIR, "model", "label_encoder.pkl")
+STATIC_DIR = os.path.join(BASE_DIR, "static")
+ASSETS_DIR = os.path.join(BASE_DIR, "assets")
 
 # ── App ────────────────────────────────────────────────────────────
 app = FastAPI(title="SignBridge AI", version="1.0.0")
