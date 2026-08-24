@@ -60,7 +60,7 @@ python -m uvicorn main:app --reload --port 8000
 on your PATH. Alternatively, just run `python main.py` — it starts the same
 server directly.)
 
-Open: http://localhost:8000
+Open: https://sign-bridge-ai-gold.vercel.app/
 
 ---
 
